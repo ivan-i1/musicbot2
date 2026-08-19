@@ -1,3 +1,5 @@
+const { MessageFlags } = require('discord.js');
+
 /**
  * [HELPER FUNCTION] Sends a direct message to a specific user.
  * This is your "internal command".
@@ -36,4 +38,38 @@ async function sendDmToUser(client, userId, messageContent) {
   }
 }
 
-module.exports = { sendDmToUser };
+/**
+ * [HELPER FUNCTION] Reports a command failure back to the user, safely.
+ *
+ * Two traps this exists to avoid:
+ *  1. Calling `interaction.reply()` on an interaction that was already
+ *     replied to or deferred throws `InteractionAlreadyReplied` — so an error
+ *     handler written as a bare `reply()` turns one failure into two, the
+ *     second one unhandled.
+ *  2. `{ ephemeral: true }` is deprecated as of discord.js v14.23 in favour of
+ *     `{ flags: MessageFlags.Ephemeral }`.
+ *
+ * Never throws: if the response itself fails (expired token, lost gateway),
+ * it logs and returns false. An error handler that can throw is not one.
+ *
+ * @param {import('discord.js').RepliableInteraction} interaction
+ * @param {string} content - user-facing message.
+ * @returns {Promise<boolean>} - true if the user was told, false otherwise.
+ */
+async function respondWithError(interaction, content) {
+  const payload = { content, flags: MessageFlags.Ephemeral };
+
+  try {
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(payload);
+    } else {
+      await interaction.reply(payload);
+    }
+    return true;
+  } catch (error) {
+    console.error('[Reply Error] Could not deliver the error message to the user:', error);
+    return false;
+  }
+}
+
+module.exports = { sendDmToUser, respondWithError };
