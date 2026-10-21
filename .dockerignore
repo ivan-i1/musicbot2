@@ -1,0 +1,7 @@
+node_modules
+.env
+data
+claude
+.claude
+.git
+.DS_Store

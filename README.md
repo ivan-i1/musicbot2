@@ -79,3 +79,21 @@ Audio is transcoded by the bundled `ffmpeg-static` build, which encodes Opus
 directly. There is deliberately **no** `@discordjs/opus` — it has no prebuilt
 binary for Node 26 and would fall back to a source compile that fails on a
 bare host.
+
+## Hosting
+
+Runs 24/7 in Docker on the home server (`~/services/musicbot2`), from `Dockerfile` + `compose.yml`.
+
+Deploy / update from a checkout on your Mac:
+
+```bash
+git archive HEAD | ssh escalenus@escalenusserver 'mkdir -p ~/services/musicbot2 && tar -x -C ~/services/musicbot2'
+scp .env escalenus@escalenusserver:~/services/musicbot2/.env   # first time, or when it changes
+ssh escalenus@escalenusserver 'cd ~/services/musicbot2 && chmod 600 .env && docker compose up -d --build'
+```
+
+Logs: `ssh escalenus@escalenusserver 'cd ~/services/musicbot2 && docker compose logs -f --tail 100'`
+
+Only one instance may run per bot token — stop any local `npm start` before deploying.
+`data/mailbox.json` lives in the `musicbot2_data` volume. To use local files, set `MUSIC_DIR=/music`
+in the server's `.env` and uncomment the `/music` mount in `compose.yml`.

@@ -1,0 +1,18 @@
+# Runs on the home server from ~/services/musicbot2 (see README "Hosting").
+# Outbound-only bot: no ports published.
+name: musicbot2
+services:
+  bot:
+    build: .
+    image: musicbot2:local
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    volumes:
+      - data:/app/data
+      # Local music library (only if MUSIC_DIR is set in .env, e.g. MUSIC_DIR=/music):
+      # - /home/escalenus/music:/music:ro
+    mem_limit: 512m
+
+volumes:
+  data:
