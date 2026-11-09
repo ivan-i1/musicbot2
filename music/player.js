@@ -68,7 +68,33 @@ function buildFfmpegArgs(track) {
  * @returns {import('node:stream').Readable}
  */
 function createTrackStream(track) {
-  return new prism.FFmpeg({ command: ffmpegPath, args: buildFfmpegArgs(track) });
+  const stream = new prism.FFmpeg({ command: ffmpegPath, args: buildFfmpegArgs(track) });
+  watchFfmpegExit(stream.process, track);
+  return stream;
+}
+
+/**
+ * Log when ffmpeg dies. To the player a crash is indistinguishable from a
+ * track ending — the stream just closes — so this is the only trace of it.
+ *
+ * @param {import('node:child_process').ChildProcess} proc
+ * @param {{title?: string}} track
+ * @param {(line: string) => void} log
+ */
+function watchFfmpegExit(proc, track, log = console.error) {
+  let stderr = '';
+  proc.stderr.on('data', chunk => {
+    stderr = (stderr + chunk).slice(-500);
+  });
+
+  proc.once('close', (code, signal) => {
+    // prism-media SIGKILLs ffmpeg on skip and stop; that is not a failure.
+    if (code === 0 || signal === 'SIGKILL') return;
+
+    const how = signal ? `was killed by ${signal}` : `exited with code ${code}`;
+    const detail = stderr.trim() ? `: ${stderr.trim()}` : '';
+    log(`[Music] ffmpeg ${how} while playing "${track.title}"${detail}`);
+  });
 }
 
 /** @param {{kind: string, path?: string, url?: string}} track */
@@ -189,4 +215,4 @@ class MusicManager {
   }
 }
 
-module.exports = { MusicManager, buildFfmpegArgs, createTrackStream, createTrackResource, ffmpegPath };
+module.exports = { MusicManager, buildFfmpegArgs, createTrackStream, createTrackResource, watchFfmpegExit, ffmpegPath };

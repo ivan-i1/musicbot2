@@ -5,7 +5,9 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
-const { createTrackStream, ffmpegPath } = require('../music/player.js');
+const { EventEmitter } = require('node:events');
+
+const { createTrackStream, ffmpegPath, watchFfmpegExit } = require('../music/player.js');
 
 // The voice layer itself needs a live gateway, but the audio pipeline does
 // not — these run real ffmpeg and assert on the real bytes it produces. This
@@ -78,4 +80,57 @@ test('both kinds encode opus at the sample rate Discord requires', () => {
     assert.equal(args[args.indexOf('-ar') + 1], '48000');
     assert.equal(args[args.indexOf('-ac') + 1], '2');
   }
+});
+
+// A dead ffmpeg looks exactly like a track that ended: the stream closes, the
+// player goes Idle, the bot leaves. The exit status is the only difference.
+function fakeProcess() {
+  const proc = new EventEmitter();
+  proc.stderr = new EventEmitter();
+  return proc;
+}
+
+function logsFor(exit, stderr) {
+  const lines = [];
+  const proc = fakeProcess();
+  watchFfmpegExit(proc, { title: 'song.mp3' }, line => lines.push(line));
+  if (stderr) proc.stderr.emit('data', Buffer.from(stderr));
+  proc.emit('close', exit.code ?? null, exit.signal ?? null);
+  return lines;
+}
+
+test('watchFfmpegExit reports a crash by signal', () => {
+  const lines = logsFor({ signal: 'SIGSEGV' });
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], /SIGSEGV/);
+  assert.match(lines[0], /song\.mp3/);
+});
+
+test('watchFfmpegExit reports a non-zero exit with what ffmpeg said', () => {
+  const lines = logsFor({ code: 1 }, 'Server returned 404 Not Found\n');
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], /code 1/);
+  assert.match(lines[0], /404 Not Found/);
+});
+
+test('watchFfmpegExit stays quiet on a clean finish', () => {
+  assert.deepEqual(logsFor({ code: 0 }), []);
+});
+
+test('watchFfmpegExit stays quiet when the stream was killed on purpose', () => {
+  // prism-media SIGKILLs ffmpeg when a track is skipped or stopped.
+  assert.deepEqual(logsFor({ signal: 'SIGKILL' }), []);
+});
+
+test('createTrackStream logs when real ffmpeg fails', async t => {
+  const error = t.mock.method(console, 'error', () => {});
+  const stream = createTrackStream({ kind: 'file', path: path.join(dir, 'missing.mp3'), title: 'missing.mp3' });
+  const proc = stream.process;
+  stream.on('data', () => {});
+
+  await new Promise(resolve => proc.once('close', resolve));
+  await new Promise(resolve => setImmediate(resolve));
+
+  assert.equal(error.mock.callCount(), 1);
+  assert.match(error.mock.calls[0].arguments[0], /missing\.mp3/);
 });
