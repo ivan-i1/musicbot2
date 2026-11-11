@@ -49,6 +49,7 @@ without them. Presence is what lets `/mailbox` know when someone comes online.
 | `/queue` | show what is playing and what is next |
 | `/nowplaying` | show the current track |
 | `/chat <message>` | talk to the bot — a small AI on the home server answers publicly, in your language. Up to 500 characters; one reply at a time for the whole server, a 20 s cooldown per person |
+| `@musicbot02 <message>` | same as `/chat`, in an ordinary message: the bot replies to it (pinging nobody). Shares `/chat`'s cooldown, queue and channel memory; too soon gets a 🧊 reaction, a full queue ⏳. Mentions inside `>` quotes or code are ignored |
 
 ## Development
 
@@ -127,6 +128,15 @@ ssh escalenus@escalenusserver 'cd ~/services/musicbot2/models && sha256sum *.ggu
 Then add `LLM_BASE_URL=http://llm:8080/v1` to the server's `.env`, bring
 everything up, and register the new command once from your Mac with
 `npm run deploy`.
+
+**@mentions.** The bot also answers when its user or its managed role is
+@mentioned outside quotes and code (design: `MENTION_CHAT_PLAN.md`). In each
+channel it should answer in, it needs **View Channel**, **Send Messages** (or
+**Send Messages in Threads**), **Read Message History** and **Add Reactions**.
+Without the first three it stays silent and logs one `[Chat] Missing
+permission …` line per channel per hour; without Add Reactions only the
+🧊/⏳ feedback is skipped. No new env keys and no `npm run deploy` — it is not
+a slash command.
 
 **Swapping the model** needs no bot rebuild. Edit the `-m` path in the `llm`
 service's `command:` in `compose.yml` (keep `--alias chat`), then:

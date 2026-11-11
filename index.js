@@ -10,6 +10,8 @@ const { MailboxStore, becameAvailable } = require('./mailbox.js');
 const { sendDmToUser } = require('./utils.js');
 const { MusicManager } = require('./music/player.js');
 const { createChat, chatStatusLine } = require('./chat/index.js');
+const { isMentionTrigger } = require('./chat/mention.js');
+const { respondToMention } = require('./chat/respond.js');
 require('dotenv').config(); // Load variables from .env
 
 const token = process.env.DISCORD_TOKEN;
@@ -142,6 +144,22 @@ client.on('messageCreate', async message => {
 
   if (lookingForGroup) {
     console.log(`[Tracking] User: ${message.author.tag} is looking for a group!`);
+  }
+});
+
+// 7. Event Listener: answer @mentions with the chat model
+//
+// Same gate, history and model as /chat — see chat/respond.js. The decision is
+// the pure chat/mention.js; this stays thin. It must never throw out of the
+// listener, and never logs content: a DiscordAPIError carries the request body.
+client.on('messageCreate', async message => {
+  try {
+    const botId = client.user.id;
+    const botRoleId = message.guild?.members.me?.roles.botRole?.id ?? null;
+    if (!isMentionTrigger(message, { botId, botRoleId })) return;
+    await respondToMention(message, { chat: client.chat, botId, botRoleId });
+  } catch (error) {
+    console.error(`[Chat] mention handler failed: ${error?.code ?? error?.name ?? 'unknown'}`);
   }
 });
 

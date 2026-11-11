@@ -75,6 +75,8 @@ module.exports = {
   escapeUserText,
   formatReply,
   capStoredAnswer,
+  truncate,
+  ELLIPSIS,
   MAX_REPLY_CHARS,
   MAX_NAME_CHARS,
   STORED_ANSWER_CHARS,

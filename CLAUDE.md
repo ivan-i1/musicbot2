@@ -94,6 +94,20 @@ edit; swapping the runtime is `.env` only. `index.js` hangs `client.chat`
 - History is per channel id (threads get their own), in memory, budgeted by
   characters, assistant turns capped at 600 characters. Failed or empty
   exchanges are not stored.
+- **@mentions use the same pipeline.** A second `messageCreate` listener in
+  `index.js` asks `chat/mention.js` (pure) whether the bot user `<@id>`/`<@!id>`
+  or its managed role `<@&id>` appears in the *raw content* after
+  `stripQuotesAndCode` — code first, then `>>> ` to the end, then `^\s*>\s`
+  lines — so a quoted or code-fenced @bot never triggers (`mentions.has()`
+  would, since quoted mentions still land in `mentions`). Bots, webhooks, DMs,
+  system messages and edits are ignored. `chat/respond.js` then shares
+  `/chat`'s gate (cooldown, queue, heat gap) and channel history via
+  `chat/run.js` (`generateReply`, the generation step both paths call).
+  Refusals are a 🧊/⏳ reaction, at most one per user per cooldown window;
+  missing View/Send(InThreads)/Read History is silent with one `[Chat]` line
+  per channel per hour; the reply uses `allowedMentions: { parse: [],
+  repliedUser: false }` and `failIfNotExists: false`. Same privacy rule: no
+  content logged, and no replied-to or older message is ever fetched.
 
 **`utils.js`** holds `sendDmToUser(client, userId, content)`, which swallows
 Discord error codes `50007` (DMs closed/blocked) and `10013` (unknown user)
