@@ -9,6 +9,7 @@ const { parseTrackedChannels, shouldTrack, messageStats } = require('./tracking.
 const { MailboxStore, becameAvailable } = require('./mailbox.js');
 const { sendDmToUser } = require('./utils.js');
 const { MusicManager } = require('./music/player.js');
+const { createChat, chatStatusLine } = require('./chat/index.js');
 require('dotenv').config(); // Load variables from .env
 
 const token = process.env.DISCORD_TOKEN;
@@ -47,6 +48,10 @@ client.mailbox = new MailboxStore(path.join(__dirname, 'data', 'mailbox.json'));
 client.music = new MusicManager();
 client.musicDir = process.env.MUSIC_DIR || null;
 
+// /chat — a local LLM over the OpenAI-compatible API. Off unless LLM_BASE_URL
+// is set; the bot must keep running when the llm container is down.
+client.chat = createChat(process.env);
+
 // 2. Load Command Files
 // 'client.commands' will store all of your command definitions
 client.commands = new Collection();
@@ -66,6 +71,8 @@ client.once('clientReady', () => {
   console.log(client.musicDir
     ? `[Music] Library: ${client.musicDir}`
     : '[Music] No MUSIC_DIR set — /play accepts http(s) links only.');
+
+  console.log(chatStatusLine(client.chat.config));
 
   if (trackedChannelIds.length === 0) {
     console.log('[Tracking] Disabled — set TRACKED_CHANNEL_IDS in .env to enable.');

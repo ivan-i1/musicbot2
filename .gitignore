@@ -4,9 +4,14 @@ node_modules
 
 # Local-only planning / context — house convention, never travels with a clone
 claude/
+# Harness worktrees live in .claude/worktrees/<name>
+.claude/
 
 # macOS
 .DS_Store
 
 # Runtime state (queued mailbox messages)
 data/
+
+# LLM model files for the llm compose service (1 GB+ each, never committed)
+models/
