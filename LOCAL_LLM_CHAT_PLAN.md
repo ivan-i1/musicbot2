@@ -175,8 +175,8 @@ provider). On `clientReady`, log `[Chat] Enabled → <baseUrl> (model <model>)` 
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     cpuset: "1,3"          # one physical core; core 0 stays free for ffmpeg + other services
-    mem_limit: 2g
-    memswap_limit: 2g
+    mem_limit: 3g
+    memswap_limit: 3g
     volumes: ["./models:/models:ro"]
     command: >
       -m /models/Qwen_Qwen3.5-2B-Q4_K_M.gguf --alias chat --host 0.0.0.0 --port 8080
@@ -192,7 +192,7 @@ provider). On `clientReady`, log `[Chat] Enabled → <baseUrl> (model <model>)` 
 - No `ports:`. No `depends_on` from the bot, because the bot must run without the llm.
 - **Flags:** every one was verified in b12199's `llama-server --help` on 2026-11-10, and the live tests ran with them.
 - **Model filename:** the upstream filename is kept as-is (the sha256 is recorded in the README). LFM uses `LFM2.5-1.2B-Instruct-Q4_K_M.gguf`.
-- **Memory:** `mem_limit 2g` vs 883 MiB measured, plus ≤256 MiB cache plus the KV for 4096 tokens. Record peak RSS in the live test.
+- **Memory:** `mem_limit 3g`. Live 2026-11-10 at 2g: 750 MiB anon + 1.29 GB mmap-ed model page cache hit memory.max 159× (no OOM, but model pages evicted/re-read), so it was raised to 3g.
 - The bot `.env` gains `LLM_BASE_URL=http://llm:8080/v1`.
 - `models/` is added to `.gitignore` and `.dockerignore`, and `.claude/` to `.gitignore` (worktree convention).
 

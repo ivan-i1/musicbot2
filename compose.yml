@@ -27,8 +27,10 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     cpuset: "1,3"          # one physical core; core 0 stays free for ffmpeg + other services
-    mem_limit: 2g
-    memswap_limit: 2g
+    # The mmap-ed model file (~1.3 GB) counts against this limit on top of ~0.75 GB
+    # anon + up to 256 MiB prompt cache; 2g thrashed (memory.max hit 159x on 2026-11-10).
+    mem_limit: 3g
+    memswap_limit: 3g
     volumes: ["./models:/models:ro"]
     command: >
       -m /models/Qwen_Qwen3.5-2B-Q4_K_M.gguf --alias chat --host 0.0.0.0 --port 8080
